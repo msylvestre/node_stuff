@@ -1,0 +1,25 @@
+{
+  "name": "node_stuff",
+  "version": "1.0.0",
+  "description": "example code",
+  "main": "express_server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/msylvestre/node_stuff.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/msylvestre/node_stuff/issues"
+  },
+  "homepage": "https://github.com/msylvestre/node_stuff#readme",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "cookie-parser": "^1.4.3",
+    "express": "^4.14.0",
+    "multer": "^1.2.0"
+  }
+}

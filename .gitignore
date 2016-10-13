@@ -1,0 +1,7 @@
+/node_modules
+/movieApp/
+/movieCRUD/
+/myExpressApp/
+/angular-phonecat/
+*.zip
+
