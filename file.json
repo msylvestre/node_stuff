@@ -1,0 +1,38 @@
+{
+  "venzee": {
+    "id": 1,
+    "environement": "qa",
+    "url": "https://qa:9087@qa.venzee.com",
+    "user": {
+      "email": "marco@venzee.com",
+      "password": "123456789q"
+    }
+  },
+  "overstock": {
+    "id": 2,
+    "environement": "prod",
+    "url": "http://www.overstock.com",
+    "user": {
+      "email": "",
+      "password": ""
+    }
+  },
+  "houzz": {
+    "id": 3,
+    "environement": "prod",
+    "url": "https://houzz.com",
+    "user": {
+      "email": "tbd",
+      "password": "<secret>"
+    }
+  },
+  "test": {
+    "id": 5,
+    "environement": "dev",
+    "url": "https://test.com",
+    "user": {
+      "email": "tbd",
+      "password": "<secret>"
+    }
+  }
+}
