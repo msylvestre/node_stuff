@@ -34,5 +34,14 @@
       "email": "tbd",
       "password": "<secret>"
     }
+  },
+  "BC": {
+    "id": 6,
+    "environement": "prod",
+    "url": "https://bc.com",
+    "user": {
+      "email": "tbd",
+      "password": "<secret>"
+    }
   }
 }
