@@ -21,6 +21,7 @@
     "cookie-parser": "^1.4.3",
     "express": "^4.14.0",
     "multer": "^1.2.0",
-    "selenium-server-standalone-jar": ">=2.53.1"
+    "selenium-server-standalone-jar": ">=2.53.1",
+    "seneca-web": "^2.0.0"
   }
 }
