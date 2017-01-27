@@ -23,48 +23,39 @@ READ Files IN Folder
 
 END LOOP    
 ------------------------------------------------*/
-
+var fs = require('fs');
 var XLSX = require('xlsx');
 
-var newWorkbook = {  
-  SheetNames: [],
-  Sheets: {}
-}
-
-var workbookName = 'OutreashSheet_Accent Furniture.xlsx';
-
-console.log("Reading Source Workbook : " + workbookName + "...")
-var workbook     = XLSX.readFile(workbookName);
-
-
-
-// -------------------------------------------------------------------------
           
 function writeCell(wb, sheet, row, column, value) {
 
   var cell = cell = XLSX.utils.encode_cell({c:column, r:row});
 
  // create sheet if it does not exist
-  if(wb.SheetNames.indexOf(sheet) === -1) wb.SheetNames.push(sheet);
-  if(!wb.Sheets[sheet]) wb.Sheets[sheet] = {};
-  if(!wb.Sheets[sheet]['!ref']) wb.Sheets[sheet]['!ref'] = cell + ':' + cell; 
+  if(wb.SheetNames.indexOf(sheet) === -1) 
+    wb.SheetNames.push(sheet);
+
+  if(!wb.Sheets[sheet]) 
+    wb.Sheets[sheet] = {};
+
+  if(!wb.Sheets[sheet]['!ref']) 
+    wb.Sheets[sheet]['!ref'] = cell + ':' + cell; 
 
   // update sheet range if the new cell is outside of range 
   var r = XLSX.utils.decode_range(wb.Sheets[sheet]['!ref']);
   var c = XLSX.utils.decode_cell(cell);
+
   wb.Sheets[sheet]['!ref'] = XLSX.utils.encode_range({
     s: {r: Math.min(r.s.r, c.r), c: Math.min(r.s.c, c.c) },
     e: {r: Math.max(r.e.r, c.r), c: Math.max(r.e.c, c.c) },
   });
 
   // create cell if it does not exist 
-  if(!wb.Sheets[sheet][cell]) wb.Sheets[sheet][cell] = {t:'n', v:0};
+  if(!wb.Sheets[sheet][cell]) 
+    wb.Sheets[sheet][cell] = {t:'n', v:0};
 
   wb.Sheets[sheet][cell].t = 's';
   wb.Sheets[sheet][cell].v = value;
-
-  //console.log(JSON.stringify(wb,null,2));
-  //exit(0);
 
 }
 
@@ -283,37 +274,32 @@ function extractMultipleChoice(workbook, sheetName, newWorkbook, callback) {
 }
 
 
-function LoopASheet(sheetNames, callback) {
+function parseFile(workbook, newWorkbook, callback) {
 
   //console.log('sheets: ' + sheetNames);
 
-  sheetNames.forEach(function(sheetName) {
+  workbook.SheetNames.forEach(function(sheetName) {
 
     console.log('------------------------------------\nParsing the sheet : ' + sheetName);
 
-    extractTitleRow(workbook, sheetName, newWorkbook, function(status, newWB) {
-      console.log('ExtractTitleRow: ' + status);
+    extractTitleRow(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
+      //console.log('ExtractTitleRow: ' + status);
 
-      extractTooltip(workbook, sheetName, newWorkbook, function(status, newWB) {
-        console.log('extractTooltip: ' + status);
+      extractTooltip(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
+        //console.log('extractTooltip: ' + status);
 
-        generateDefaultValue(sheetName, newWorkbook, function(status, newWB) {
-          console.log('generateDefaultValue: ' + status);
+        generateDefaultValue(sheetName, newWorkbook, function(status, newWorkbook) {
+          //console.log('generateDefaultValue: ' + status);
 
-          convertDataType(workbook, sheetName, newWorkbook, function(status, newWB) {
-            console.log('convertDataType: ' + status);
+          convertDataType(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
+            //console.log('convertDataType: ' + status);
 
-            extractMultipleChoice(workbook, sheetName, newWorkbook, function(status, newWB) {
-              console.log('extractMultipleChoice: ' + status);
-                   
+            extractMultipleChoice(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
+              //console.log('extractMultipleChoice: ' + status);
             });
-
           });
-          
         });
-        
       });
-      
     });
 
   });
@@ -321,10 +307,53 @@ function LoopASheet(sheetNames, callback) {
   callback("done", newWorkbook);
 }
 
-
 //=============================================================================
 
-LoopASheet(workbook.SheetNames, function(status, newWB) {
-  console.log("Saving Workbook...")
-  XLSX.writeFile(newWB, 'out2.xlsx');   
-});
+function main() {
+
+  // Default structure of a workbook
+  var newWorkbook = {  
+    SheetNames: [],
+    Sheets: {}
+  }
+
+  // Manage the input/output filename passed on command line
+  if (process.argv.length == 2) {
+    var defaultWorkbook    = 'OutreashSheet_Accent Furniture.xlsx';
+    var defaultNewWorkbook = 'output.xlsx'
+  }
+  else if (process.argv.length != 4) {
+    p = process.argv.length - 2;
+    throw new Error("You need 2 params but you got " + p + "\nEx: $ node template.js input_file_path output_file_path");
+  }
+
+  // Define the input/output filename
+  var workbookName    = defaultWorkbook    || process.argv[2];
+  var newWorkbookName = defaultNewWorkbook || process.argv[3];
+
+  console.log("Reading Source Workbook : " + workbookName + "...")
+  console.log('newWorkbookName: '          + newWorkbookName);
+  
+  var workbook = XLSX.readFile(workbookName);
+
+  parseFile(workbook, newWorkbook, function(status, newWB) {
+    console.log("\n\nSaving Workbook %s...\n\n", newWorkbookName);
+    XLSX.writeFile(newWB, newWorkbookName); 
+
+    /*
+    var jsn =  XLSX.utils.sheet_to_json(newWB.Sheets); 
+    var filename = 'template.json';
+
+    fs.writeFile(filename, jsn, function (err) {
+      if (err) return console.log(err);
+      console.log(jsn);
+      console.log('\n\nWriting to : ' + filename);
+    });
+    */
+
+  });
+
+}
+
+
+main();
