@@ -1,359 +1,248 @@
-/*  PSEUDO Code
-------------------------------------------------
-READ Files IN Folder
-
-  READ tabs IN File
-
-    READ Title row
-    WRITE in new Excel
-    
-    READ Tooltip Row
-    WRITE in Excel
-
-    WRITE Default properties in new Excel
-
-    READ DataType
-    Convert DataType to TemplateType
-    WRITE in new Excel
-    Extract Data value
-    Generate multupleChoice attribute
-    Write in new Excel
-
-  END LOOP
-
-END LOOP    
-------------------------------------------------*/
-var fs = require('fs');
-var XLSX = require('xlsx');
-
-          
-function writeCell(wb, sheet, row, column, value) {
-
-  var cell = cell = XLSX.utils.encode_cell({c:column, r:row});
-
- // create sheet if it does not exist
-  if(wb.SheetNames.indexOf(sheet) === -1) 
-    wb.SheetNames.push(sheet);
-
-  if(!wb.Sheets[sheet]) 
-    wb.Sheets[sheet] = {};
-
-  if(!wb.Sheets[sheet]['!ref']) 
-    wb.Sheets[sheet]['!ref'] = cell + ':' + cell; 
-
-  // update sheet range if the new cell is outside of range 
-  var r = XLSX.utils.decode_range(wb.Sheets[sheet]['!ref']);
-  var c = XLSX.utils.decode_cell(cell);
-
-  wb.Sheets[sheet]['!ref'] = XLSX.utils.encode_range({
-    s: {r: Math.min(r.s.r, c.r), c: Math.min(r.s.c, c.c) },
-    e: {r: Math.max(r.e.r, c.r), c: Math.max(r.e.c, c.c) },
-  });
-
-  // create cell if it does not exist 
-  if(!wb.Sheets[sheet][cell]) 
-    wb.Sheets[sheet][cell] = {t:'n', v:0};
-
-  wb.Sheets[sheet][cell].t = 's';
-  wb.Sheets[sheet][cell].v = value;
-
-}
+var Excel = require('exceljs');
 
 
-function extractTitleRow(workbook, sheetName, newWorkbook, callback) {
+//-------------------------------------------------------------------------------------------------
+function parseCmdLine() {
 
-  var worksheet = workbook.Sheets[sheetName];
-
-  //for(var i = 0; i < 126; i++) {
-  
-  for (i in worksheet) {
-
-    var cell = i; //Object.keys(worksheet)[i];
-    var cellRange = XLSX.utils.decode_cell(cell);
-
-    // all keys that do not begin with "!" correspond to cell addresses, so skip this one 
-    if(cell[0] === '!') continue;
-    
-    // I want the title row, so when you reach row 2, stop looping the cells
-    if (cellRange.r > 1) break;
-
-    // I want to read the row 2 in Excel (meaning row 1 in the lib as it start at 0)
-    if (cellRange.r > 0) {
-
-      if (cellRange.c >= 7) {
-      
-        //console.log(sheetName + "!" + cell + "=" + JSON.stringify(worksheet[cell].v));
-
-        // Reverse the row from horizontal to vertical
-        var row = cellRange.c - 7
-        var column = 0 
-        var value = worksheet[cell].v;
-
-        writeCell(newWorkbook, sheetName, row, column, value);
-      }
-    }
+  // Manage the input/output filename passed on command line
+  if (process.argv.length == 2) {  // No argument passed on camdline
+    var defaultWorkbook    = 'test.xlsx';
+    var defaultNewWorkbook = 'output.xlsx'
+  }
+  else if (process.argv.length == 3) {  // No argument passed on camdline
+    var defaultNewWorkbook = 'output.xlsx'
+  }
+  else if (process.argv.length != 4) {  // Not only 2 arguments passed on cmdline
+    p = process.argv.length - 2;
+    throw new Error("You need 1 or 2 params but you got " + p + "\nEx: $ node template.js input_file_path output_file_path");
   }
 
-  callback("done", newWorkbook);
+  // Define the input/output filename
+  var wb = {};
+  wb.source      = defaultWorkbook    || process.argv[2];
+  wb.destination = defaultNewWorkbook || process.argv[3];  
 
+  return wb;
 }
 
 
-function extractTooltip(workbook, sheetName, newWorkbook, callback) {
+//-------------------------------------------------------------------------------------------------
 
-  var worksheet = workbook.Sheets[sheetName];
+function extractTitleRowAndRequired(wsSource, wsDestination, callback) {
 
-  for (i in worksheet) {
+  var row = wsSource.getRow(2);
+  var col = 1;
 
-    var cell = i; //Object.keys(worksheet)[i];
-    var cellRange = XLSX.utils.decode_cell(cell);
-
-    // all keys that do not begin with "!" correspond to cell addresses, so skip this one 
-    if(cell[0] === '!') continue;
+  row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
     
-    // I want the Tooltip row (#3) row, so when you reach row 4, stop looping the cells
-    if (cellRange.r > 2) break;
-    
-    if (cellRange.r > 1) {  // I want to read the row 3 in Excel (meaning row 2 in the lib as it start at 0)
+    // Skip the first 7 column
+    if (col > 7) {
 
-      if (cellRange.c >= 7) {  // Skip the first 7 column
-      
-        //console.log(sheetName + "!" + cell + "=" + JSON.stringify(worksheet[cell].v));
+      var rowValues = [];
+      rowValues[1] = cell.value;
 
-        // Reverse the row from horizontal to vertical
-        var row = cellRange.c - 7
-        var column = 4 
-        var value = worksheet[cell].v;
+      if (cell.style.font.color.argb == 'FFFFFF00')
+        rowValues[6] = 'TRUE';
+      else
+        rowValues[6] = 'FALSE';
 
-        writeCell(newWorkbook, sheetName, row, column, value);
-      }
+      wsDestination.getRow(col - 6).values = rowValues;  // I convert from row to column, and offset to start at the row 1
+
     }
-  }
-
-  callback("done", newWorkbook);
-
-}
-
-
-function generateDefaultValue(sheetName, newWorkbook, callback) {
-
-  // RANGE structure
-  //  {"s": {"c": 0, "r": 0},   // Start
-  //   "e": {"c": 4,"r": 118}}  // End                 
-  
-  range =  XLSX.utils.decode_range(newWorkbook.Sheets[sheetName]['!ref']);
-
-  for (var i = 0; i <= range.e.r; i++) {
-    var row = i;
-
-    writeCell(newWorkbook, sheetName, row, 2, "null");    // min_limit
-    writeCell(newWorkbook, sheetName, row, 3, "null");    // max_limit
-    writeCell(newWorkbook, sheetName, row, 5, "FALSE");   // required
-    writeCell(newWorkbook, sheetName, row, 6, "FALSE");   // unique
-    writeCell(newWorkbook, sheetName, row, 7, "FALSE");   // html
-    writeCell(newWorkbook, sheetName, row, 8, "null");    // date_format
-    writeCell(newWorkbook, sheetName, row, 9, "null");    // casing
-    writeCell(newWorkbook, sheetName, row, 10, "null");   // image_transform
-    writeCell(newWorkbook, sheetName, row, 11, "null");   // default_value
-    writeCell(newWorkbook, sheetName, row, 12, "null");   // padding
-  }  
-
-  callback("done", newWorkbook);
-
-}
-
-
-function convertDataType(workbook, sheetName, newWorkbook, callback) {
-
-  var worksheet = workbook.Sheets[sheetName];
-
-  for (i in worksheet) {
-
-    var cell = i; //Object.keys(worksheet)[i];
-    var cellRange = XLSX.utils.decode_cell(cell);
-
-    // all keys that do not begin with "!" correspond to cell addresses, so skip this one 
-    if(cell[0] === '!') continue;
-    
-    // I want the Tooltip row (#4 row, so when you reach row 4, stop looping the cells
-    if (cellRange.r > 3) break;
-    
-    if (cellRange.r > 2) {  // I want to read the row 4 in Excel (meaning row 3 in the lib as it start at 0)
-
-      if (cellRange.c >= 7) {  // Skip the first 7 column
       
-        //console.log(sheetName + "!" + cell + "=" + JSON.stringify(worksheet[cell].v));
-
-        // Reverse the row from horizontal to vertical
-        var row = cellRange.c - 7
-        var column = 1 
-        var value = worksheet[cell].v;
-
-        if (value.indexOf("Please") == 0) value = "Please";
-
-        // Convert the dataType
-       switch(value) {
-        case "Yes or No":
-          value = "multipleChoice";
-          break;
-        case "Decimal":
-          value = "float";
-          break;
-        case "Number":
-          value = "integer";
-          break;
-        case "Text":
-          value = "text";
-          break;
-        case "Please":
-          value = "multipleChoice";
-          break;
-        default:
-          value = "error in conversion";
-       }
-
-        writeCell(newWorkbook, sheetName, row, column, value);
-      }
-    }
-  }
-
-  callback("done", newWorkbook);
-
-}
-
-
-function extractMultipleChoice(workbook, sheetName, newWorkbook, callback) {
-
-  var worksheet = workbook.Sheets[sheetName];
-
-  for (i in worksheet) {
-
-    var cell = i; //Object.keys(worksheet)[i];
-    var cellRange = XLSX.utils.decode_cell(cell);
-
-    // all keys that do not begin with "!" correspond to cell addresses, so skip this one 
-    if(cell[0] === '!') continue;
-    
-    // I want the Tooltip row (#4) row, so when you reach row 4, stop looping the cells
-    if (cellRange.r > 3) break;
-    
-    if (cellRange.r > 2) {  // I want to read the row 4 in Excel (meaning row 3 in the lib as it start at 0)
-
-      if (cellRange.c >= 7) {  // Skip the first 7 column
-      
-        //console.log(sheetName + "!" + cell + "=" + JSON.stringify(worksheet[cell].v));
-
-        // Reverse the row from horizontal to vertical
-        var row = cellRange.c - 7
-        var column = 13 
-        var value = worksheet[cell].v;
-
-
-        // Extract the multipleChoice and format it to right format
-        if (value.indexOf("Please") == 0) {
-
-          value = value.replace("Please choose from the following: ", "");        // Remove the beginning of the sentence to keep only the values
-          value = value.replace(/; /g, "\\n");                                    // Replace the '; ' by '\n' via a good'ol regex :)  The magic is the "g" that change all the '; '
-          value = '{"allowMapOwnAttribute": "yes", "values": "' + value + '"}';   // Create the json-like structure for the template with the extracted attribute
-
-        }
-        else if (value == "Yes or No") {
-          value = '{"allowMapOwnAttribute": "yes", "values": "Y\\nN"}';
-        }
-        else {
-          value = "";
-        }
-
-        writeCell(newWorkbook, sheetName, row, column, value);
-      }
-    }
-  }
-
-  callback("done", newWorkbook);
-
-}
-
-
-function parseFile(workbook, newWorkbook, callback) {
-
-  //console.log('sheets: ' + sheetNames);
-
-  workbook.SheetNames.forEach(function(sheetName) {
-
-    console.log('------------------------------------\nParsing the sheet : ' + sheetName);
-
-    extractTitleRow(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
-      //console.log('ExtractTitleRow: ' + status);
-
-      extractTooltip(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
-        //console.log('extractTooltip: ' + status);
-
-        generateDefaultValue(sheetName, newWorkbook, function(status, newWorkbook) {
-          //console.log('generateDefaultValue: ' + status);
-
-          convertDataType(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
-            //console.log('convertDataType: ' + status);
-
-            extractMultipleChoice(workbook, sheetName, newWorkbook, function(status, newWorkbook) {
-              //console.log('extractMultipleChoice: ' + status);
-            });
-          });
-        });
-      });
-    });
+    col++;
 
   });
 
-  callback("done", newWorkbook);
+  callback("done", wsDestination);
+
+}
+
+
+//-------------------------------------------------------------------------------------------------
+
+function extractTooltip(wsSource, wsDestination, callback) {
+
+  var row = wsSource.getRow(3);
+  var col = 1;
+
+  // Loop each column form the row
+  row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
+  
+    if (col > 7)    // Skip the first 7 column
+      wsDestination.getRow(col - 6).getCell(5).value = cell.value;  // I convert from row to column, and offset to start at the row 1
+    col++;
+
+  });
+
+  callback("done", wsDestination);
+
+}
+
+
+//-------------------------------------------------------------------------------------------------
+
+function generateDefaultValue(wsSource, wsDestination, callback) {
+
+  var row = wsSource.getRow(2);
+  var col = 1;
+
+  // Loop each column form the row
+  row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
+  
+    if (col > 7) {   // Skip the first 7 column
+      wsDestination.getRow(col - 6).getCell(3).value = 'null';
+      wsDestination.getRow(col - 6).getCell(4).value = 'null';
+      wsDestination.getRow(col - 6).getCell(7).value = 'FALSE';
+      wsDestination.getRow(col - 6).getCell(8).value = 'FALSE';
+      wsDestination.getRow(col - 6).getCell(9).value = 'null';
+      wsDestination.getRow(col - 6).getCell(10).value = 'null';
+      wsDestination.getRow(col - 6).getCell(11).value = 'null';
+      wsDestination.getRow(col - 6).getCell(12).value = 'null';
+      wsDestination.getRow(col - 6).getCell(13).value = 'null';
+    }
+    col++;
+
+  });
+
+  callback("done", wsDestination);
+
+}
+
+
+//-------------------------------------------------------------------------------------------------
+
+function convertDataType(wsSource, wsDestination, callback) {
+
+  var row = wsSource.getRow(4);
+  var col = 1;
+  var dataType;
+
+  // Loop each column form the row
+  row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
+  
+    if (col > 7)  {  // Skip the first 7 column
+      
+      if (cell.value.indexOf("Please") == 0 || cell.value == 'Yes or No')
+        dataType = 'multipleChoice';
+      else if (cell.value == 'Decimal')
+        dataType = 'float';
+      else if (cell.value == 'Number')
+        dataType = 'integer';
+      else if (cell.value == 'Text')
+        dataType = 'text';
+      else 
+        dataType = 'Error in convertDataType()';
+
+      wsDestination.getRow(col - 6).getCell(2).value = dataType;  // I convert from row to column, and offset to start at the row 1
+    
+    }
+    
+    col++;
+
+  });
+
+  callback("done", wsDestination);
+
+}
+
+
+//-------------------------------------------------------------------------------------------------
+
+function extractMultipleChoice(wsSource, wsDestination, callback) {
+
+  var row = wsSource.getRow(4);
+  var col = 1;
+  var multipleChoice;
+
+  // Loop each column form the row
+  row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
+  
+    if (col > 7)  {  // Skip the first 7 column
+      
+      var cellValue = cell.value;
+
+      // Extract the multipleChoice and format it to right format
+      if (cellValue.indexOf("Please") == 0) {
+
+        cellValue = cellValue.replace("Please choose from the following: ", "");        // Remove the beginning of the sentence to keep only the values
+        cellValue = cellValue.replace(/; /g, "\\n");                                    // Replace the '; ' by '\n' via a good'ol regex :)  The magic is the "g" that change all the '; '
+        multipleChoice = '{"allowMapOwnAttribute": "yes", "values": "' + cellValue + '"}';   // Create the json-like structure for the template with the extracted attribute
+
+      }
+      else if (cellValue == "Yes or No") {
+        multipleChoice = '{"allowMapOwnAttribute": "yes", "values": "Y\\nN"}';
+      }
+      else {
+        multipleChoice = "";
+      }
+
+      wsDestination.getRow(col - 6).getCell(14).value = multipleChoice;  // I convert from row to column, and offset to start at the row 1
+    
+    }
+    
+    col++;
+
+  });
+
+  callback("done", wsDestination);
+
 }
 
 //=============================================================================
 
 function main() {
 
-  // Default structure of a workbook
-  var newWorkbook = {  
-    SheetNames: [],
-    Sheets: {}
-  }
+  var wbSource      = new Excel.Workbook();
+  var wbDestination = new Excel.Workbook();
+  var wbsName       = parseCmdLine();
 
-  // Manage the input/output filename passed on command line
-  if (process.argv.length == 2) {
-    var defaultWorkbook    = 'OutreashSheet_Accent Furniture.xlsx';
-    var defaultNewWorkbook = 'output.xlsx'
-  }
-  else if (process.argv.length != 4) {
-    p = process.argv.length - 2;
-    throw new Error("You need 2 params but you got " + p + "\nEx: $ node template.js input_file_path output_file_path");
-  }
+  console.log('Reading Source Workbook : ' + wbsName.source);
+  console.log('Write to Workbook       : ' + wbsName.destination);
 
-  // Define the input/output filename
-  var workbookName    = defaultWorkbook    || process.argv[2];
-  var newWorkbookName = defaultNewWorkbook || process.argv[3];
+  wbSource.xlsx.readFile(wbsName.source).then(function() {
 
-  console.log("Reading Source Workbook : " + workbookName + "...")
-  console.log('newWorkbookName: '          + newWorkbookName);
-  
-  var workbook = XLSX.readFile(workbookName);
+    wbSource.eachSheet(function(sheet, sheetId) {
 
-  parseFile(workbook, newWorkbook, function(status, newWB) {
-    console.log("\n\nSaving Workbook %s...\n\n", newWorkbookName);
-    XLSX.writeFile(newWB, newWorkbookName); 
+      console.log('\n-------- Processing sheet %s -------', sheet.name);
+      
+      // Create the sheet in the new WB
+      var wsDestination = wbDestination.addWorksheet(sheet.name);
 
-    /*
-    var jsn =  XLSX.utils.sheet_to_json(newWB.Sheets); 
-    var filename = 'template.json';
+      // Add Title Row
+      var titleRow = ['name', 'type', 'min_limit', 'limit', 'tooltip', 'required', 'unique', 'html', 'date_format',
+                      'casing', 'image_transform', 'default_value', 'padding', 'multipleChoice'];
 
-    fs.writeFile(filename, jsn, function (err) {
-      if (err) return console.log(err);
-      console.log(jsn);
-      console.log('\n\nWriting to : ' + filename);
+      wsDestination.addRow(titleRow);
+
+      extractTitleRowAndRequired(sheet, wsDestination, function(status, wsDestination) {
+        console.log('extractTitleRowAndRequired: ' + status);
+
+        extractTooltip(sheet, wsDestination, function(status, wsDestination) { 
+          console.log('extractTooltip: ' + status);
+
+          generateDefaultValue(sheet, wsDestination, function(status, wsDestination) { 
+            console.log('generateDefaultValue: ' + status);
+
+            convertDataType(sheet, wsDestination, function(status, wsDestination) { 
+              console.log('convertDataType: ' + status);
+
+              extractMultipleChoice(sheet, wsDestination, function(status, wsDestination) { 
+                console.log('extractMultipleChoice: ' + status);
+              });
+            });
+          });
+        })
+      });
+    })
+
+    // Save the new Workbook
+    wbDestination.xlsx.writeFile(wbsName.destination).then(function() {
+      console.log("\nFile %s saved", wbsName.destination);
     });
-    */
 
   });
-
 }
 
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 main();
