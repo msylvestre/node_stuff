@@ -5,7 +5,7 @@ var db_qa_config = {
   user:     "",
   database: "venzeeqa",
   password: "", 
-  host:     "venzeeqa.ceftexnrc81q.us-west-2.rds.amazonaws.com",
+  host:     "v.....",
   port:     "5432"
 };
 
