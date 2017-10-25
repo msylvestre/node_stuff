@@ -6,7 +6,7 @@ var app     = express();
 app.set('port', (process.env.PORT || 5000));
 
 
-app.get('/', function (req, res) {
+app.get('/api', hello, function (req, res) {
 
 	var auth = JSON.stringify(req.headers.authorization);
 	var q = JSON.stringify(req.query);
@@ -17,6 +17,21 @@ app.get('/', function (req, res) {
 
 });
 
+
+
+function hello(req, res, next) {
+  console.log("hello!");
+
+  var ee = new Error();
+
+  ee.name    = 'loadUserFailed';
+  ee.message = 'Failed to load user hello';
+  ee.status  = 405;
+
+  //next(ee);
+  next();
+
+}
 
 // Start the server
 //var server = app.listen(80, function () {
