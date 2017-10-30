@@ -8,7 +8,6 @@ var bcrypt = require('bcrypt')
 var bodyParser = require('body-parser');
 
 var app = express();
-//app.use(cookieParser());
 
 
 const user = {
@@ -16,6 +15,7 @@ const user = {
   passwordHash: '1234',
   id: 1
 }
+
 
 function findUser (username, callback) {
   if (username === user.username) {
@@ -76,12 +76,13 @@ app.use(passport.session())
 app.use(bodyParser.json());
 //app.use(bodyParser.urlencoded({extended: true}));
 
-passport.use('login', new LocalStrategy({passReqToCallback : true},
+passport.use(new LocalStrategy({passReqToCallback : true},
   function(req, username, password, done) {
     //console.log(req);
-    console.log('Checking auth');
-    console.log(username);
-    return done(null, user);
+    console.log('Checking auth...');
+    console.log("> username: " + username);
+    console.log("> password: " + password);
+    return done(null, user);  // When check of username/password is good, ortherwise return done(null);
   }
 ));
 
@@ -96,10 +97,14 @@ app.get('/', function (req, res) {
   res.send('Hello World!')
 })
 
+/*
 app.get('/success', function (req, res) {
-  console.log("auth? " + req.isAuthenticated());
-  res.send('Success')
+  console.log("/success reached !")
+  res.send('This is a Successful login')
+  // Always return a 302 + a pending GET 200 that let the request to hang :-/
+  // Maybe due to a missing redis !
 })
+*/
 
 app.get('/failure', function (req, res) {
   //console.log(req);
@@ -107,11 +112,13 @@ app.get('/failure', function (req, res) {
 })
 
 
-app.post('/login', passport.authenticate('login', {
-  successRedirect: '/success',
+app.post('/login', passport.authenticate('local', {
+  //successRedirect: '/success',
   failureRedirect: '/failure'
-}), function(){
-  console.log('icitte au moins');
+}), function(req, res){
+  console.log('This is a Successful login');
+  console.log("req.session: " + JSON.stringify(req.session));
+  res.send('This is a Successful login');
 })
 
 app.get('/secret', authenticationMiddleware, function(req, res) {
