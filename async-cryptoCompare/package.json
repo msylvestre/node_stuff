@@ -1,0 +1,16 @@
+{
+  "name": "async-cryptocompare",
+  "version": "1.0.0",
+  "description": "",
+  "main": "asyncExample.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^3.1.0",
+    "node-json-color-stringify": "^1.1.0",
+    "request": "^2.88.0"
+  }
+}

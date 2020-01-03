@@ -8,8 +8,8 @@ const API_KEY = env.cryptocompareApiKey;
 
 function getSSMEnv() {
 	let env = {
-		env: process.env.NODE_ENV,
-		cryptocompareApiKey:'768fa93864055fcede2febea9c3c9a8634d22454c73ece581fdd24a383912199'
+		env: 'dev', //process.env.NODE_ENV,
+		cryptocompareApiKey:'1afa2d288a59bf5573a80d995ea04825eb2055fede6ca2feb021e0cab2964adb'
 	};
 
 	return env;
