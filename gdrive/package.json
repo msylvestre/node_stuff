@@ -18,7 +18,7 @@
   "homepage": "https://github.com/venzee/connectivity#readme",
   "dependencies": {
     "google-auth-library": "^0.9.10",
-    "googleapis": "^14.2.0",
+    "googleapis": "^59.0.0",
     "seneca": "^3.2.2"
   }
 }
